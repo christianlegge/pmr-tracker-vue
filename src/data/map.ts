@@ -4604,9 +4604,9 @@ export const kootReqs = Object.values(regionData)
 			Object.entries(av.checks).filter(([ck, _]) => ck.startsWith("[Koot"))
 		)
 	)
-	.reduce(
+	.reduce<Record<string, Requirements>>(
 		(a, v) => ({ ...a, [v[0]]: v[1].reqs }),
-		{} as Record<string, Requirements>
+		{}
 	);
 
 export const allRegions = Object.getOwnPropertyNames(regionData);

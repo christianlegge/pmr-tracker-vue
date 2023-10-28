@@ -26,6 +26,12 @@ module.exports = {
 				argsIgnorePattern: "^_+$",
 			},
 		],
+		"@typescript-eslint/consistent-type-assertions": [
+			"warn",
+			{
+				assertionStyle: "never",
+			},
+		],
 	},
 	ignorePatterns: ["/*", "!/src"],
 };
