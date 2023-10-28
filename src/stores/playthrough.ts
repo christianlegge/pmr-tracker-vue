@@ -3,18 +3,10 @@ import { type Requirements, getRegionData } from "../data/map";
 import { useOptions } from "./config";
 import { saveAs } from "file-saver";
 import { allItems } from "@/data/items";
+import { z } from "zod";
+import { getKeys } from "@/utils/helpers";
 
-export type PlaythroughProps = {
-	items: string[];
-	checks: string[];
-	notes: string;
-	spiritAnnotations: typeof spiritAnnotations;
-};
-
-type SpiritAnnotations = {
-	scaling: number;
-	entrance: string;
-};
+export type PlaythroughProps = z.infer<typeof Playthrough>;
 
 const starSpirits = [
 	"Eldstar",
@@ -24,7 +16,28 @@ const starSpirits = [
 	"Misstar",
 	"Klevar",
 	"Kalmar",
-];
+] as const;
+
+const Playthrough = z.object({
+	items: z.array(z.string()),
+	checks: z.array(z.string()),
+	notes: z.string(),
+	spiritAnnotations: z.record(
+		z.enum(starSpirits),
+		z.object({
+			scaling: z.number().default(0),
+			entrance: z.string().default(""),
+		})
+	),
+});
+
+const SavedPlaythrough = Playthrough.partial();
+
+type SpiritAnnotations = z.infer<
+	typeof Playthrough
+>["spiritAnnotations"] extends Record<string, infer U>
+	? U
+	: never;
 
 const fixedChapterRewards = [...starSpirits, "Star Rod"];
 
@@ -32,55 +45,16 @@ const letters = allItems.filter(el => el.type === "letter").map(el => el.name);
 
 const storagePlaythroughStr = localStorage.getItem("playthrough");
 
-const storagePlaythrough = storagePlaythroughStr
-	? (JSON.parse(storagePlaythroughStr) as Partial<PlaythroughProps>)
-	: {};
+const storagePlaythrough: z.infer<typeof SavedPlaythrough> =
+	storagePlaythroughStr
+		? SavedPlaythrough.parse(JSON.parse(storagePlaythroughStr))
+		: {};
 
-// const defaultOptions = Object.getOwnPropertyNames(allOptions).reduce(
-// 	(a, v) => ({ ...a, [v]: allOptions[v].default }),
-// 	{}
-// );
-
-const spiritAnnotations = {
-	Eldstar: {
-		scaling: 0,
-		entrance: "",
-	},
-	Mamar: {
-		scaling: 0,
-		entrance: "",
-	},
-	Skolar: {
-		scaling: 0,
-		entrance: "",
-	},
-	Muskular: {
-		scaling: 0,
-		entrance: "",
-	},
-	Misstar: {
-		scaling: 0,
-		entrance: "",
-	},
-	Klevar: {
-		scaling: 0,
-		entrance: "",
-	},
-	Kalmar: {
-		scaling: 0,
-		entrance: "",
-	},
-	"Star Rod": {
-		scaling: 0,
-		entrance: "",
-	},
-} satisfies Record<string, SpiritAnnotations>;
-
-const init: PlaythroughProps = {
+const init: z.infer<typeof Playthrough> = {
 	items: [],
 	checks: [],
 	notes: "",
-	spiritAnnotations,
+	spiritAnnotations: {},
 	...storagePlaythrough,
 };
 
@@ -98,11 +72,11 @@ export const usePlaythrough = defineStore("playthrough", {
 				})
 			);
 		},
-		getSpiritAnnotation(k: keyof PlaythroughProps["spiritAnnotations"]) {
-			return this.spiritAnnotations[k];
+		getSpiritAnnotation<T extends (typeof starSpirits)[number]>(k: T) {
+			return this.spiritAnnotations[k] ?? { scaling: 0, entrance: "" };
 		},
-		setSpiritAnnotation(
-			k: keyof PlaythroughProps["spiritAnnotations"],
+		setSpiritAnnotation<T extends (typeof starSpirits)[number]>(
+			k: T,
 			value: Partial<SpiritAnnotations>
 		) {
 			this.spiritAnnotations[k] = { ...this.spiritAnnotations[k], ...value };
@@ -211,6 +185,7 @@ export const usePlaythrough = defineStore("playthrough", {
 			if (typeof reqs === "number") {
 				return reqs;
 			} else if (Array.isArray(reqs)) {
+				// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 				return (reqs.find(el => typeof el === "number") as number) ?? 0;
 			} else {
 				return 0;
@@ -249,9 +224,9 @@ export const usePlaythrough = defineStore("playthrough", {
 			};
 
 			if (check.startsWith("[")) {
-				const tag: keyof typeof tags | undefined = (
-					Object.getOwnPropertyNames(tags) as (keyof typeof tags)[]
-				).find(el => check.startsWith(`[${el}]`));
+				const tag: keyof typeof tags | undefined = getKeys(tags).find(el =>
+					check.startsWith(`[${el}]`)
+				);
 				if (!tag) {
 					console.error(`Error processing tag ${check}`);
 					return true;
@@ -266,7 +241,7 @@ export const usePlaythrough = defineStore("playthrough", {
 			this.checks = [];
 			this.items = [];
 			this.notes = "";
-			this.spiritAnnotations = spiritAnnotations;
+			this.spiritAnnotations = {};
 			this.save();
 		},
 		savePlaythrough() {
@@ -284,19 +259,12 @@ export const usePlaythrough = defineStore("playthrough", {
 			reader.onload = e => {
 				const contents = e.target?.result;
 				if (typeof contents === "string") {
-					const saveData = JSON.parse(contents) as PlaythroughProps;
-					if (
-						"checks" in saveData &&
-						"items" in saveData &&
-						"notes" in saveData &&
-						"spiritAnnotations" in saveData
-					) {
-						this.checks = saveData.checks;
-						this.items = saveData.items;
-						this.notes = saveData.notes;
-						this.spiritAnnotations = saveData.spiritAnnotations;
-						this.save();
-					}
+					const saveData = Playthrough.parse(contents);
+					this.checks = saveData.checks ?? [];
+					this.items = saveData.items ?? [];
+					this.notes = saveData.notes ?? "";
+					this.spiritAnnotations = saveData.spiritAnnotations;
+					this.save();
 				}
 			};
 			reader.readAsText(file);
@@ -340,12 +308,3 @@ const resolveRequirement = (
 		throw "error in resolveRequirement";
 	}
 };
-
-// export const settingsKeys = Object.getOwnPropertyNames(allOptions).filter(
-// 	(option) => allOptions[option].namespace === "settings"
-// );
-// export const configKeys = Object.getOwnPropertyNames(allOptions).filter(
-// 	(option) => allOptions[option].namespace === "config"
-// );
-
-// export type OptionsStore = typeof useOptions;
