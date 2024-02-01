@@ -48,7 +48,7 @@ function setRandomizerSettingsFromApiResponse(data: SettingsApiData) {
 		-1 <= data.StartingBoots && data.StartingBoots <= 2
 			? ["Bootless", "Boots", "Super Boots", "Ultra Boots"][
 					data.StartingBoots + 1
-			  ]
+				]
 			: "Bootless"
 	);
 	optionsStore.setValue(
@@ -56,7 +56,7 @@ function setRandomizerSettingsFromApiResponse(data: SettingsApiData) {
 		-1 <= data.StartingHammer && data.StartingHammer <= 2
 			? ["Hammerless", "Hammer", "Super Hammer", "Ultra Hammer"][
 					data.StartingHammer + 1
-			  ]
+				]
 			: "Hammerless"
 	);
 	optionsStore.setValue(
