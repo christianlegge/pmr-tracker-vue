@@ -1,3 +1,7 @@
+# ARCHIVED
+
+See [christianlegge/pmr-tracker](https://github.com/christianlegge/pmr-tracker) for the latest updates to this software.
+
 # pmr-tracker-vue
 
 This template should help get you started developing with Vue 3 in Vite.
